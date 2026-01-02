@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Crypto Trade Validator</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        /* --- THEME --- */
+        :root {
+            --bg-dark: #050a0e;
+            --white: #ffffff;
+            --gray: #b0b0b0;
+            --green: #00ff88; 
+            --red: #ff3355;
+            --yellow: #ffcc00;
+            --card-bg: #101922;
+            --border: #2a3b4c;
+            --glass: rgba(16, 25, 34, 0.98);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-dark);
+            color: var(--white);
+            margin: 0; padding: 0; height: 100vh;
+            display: flex; flex-direction: column; overflow-x: hidden;
+        }
+
+        /* --- SPLASH --- */
+        #splash {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: var(--bg-dark); z-index: 9999;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            transition: opacity 0.5s;
+        }
+        .splash-logo { font-size: 3em; color: var(--white); margin-bottom: 15px; animation: pulse 2s infinite; }
+        .splash-tag { color: var(--green); letter-spacing: 1px; }
+        @keyframes pulse { 0% { opacity: 0.6; } 50% { opacity: 1; } 100% { opacity: 0.6; } }
+
+        /* --- HEADER --- */
+        header {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 15px 20px; background: var(--glass);
+            border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 500;
+        }
+        .logo { font-weight: 800; font-size: 1.2em; color: var(--white); }
+        .menu-icon { font-size: 1.4em; color: var(--green); padding: 5px; cursor: pointer; }
+
+        /* --- MENU --- */
+        #side-menu {
+            position: fixed; top: 0; right: -280px; width: 280px; height: 100%;
+            background: #0b1118; border-left: 1px solid var(--border);
+            z-index: 1000; transition: right 0.3s ease; padding-top: 60px;
+        }
+        #side-menu.open { right: 0; }
+        .menu-link {
+            display: block; padding: 15px 25px; color: var(--gray); text-decoration: none;
+            border-bottom: 1px solid #1a2633; font-size: 1.1em;
+        }
+        .menu-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8); z-index: 900; display: none;
+        }
+        .menu-overlay.active { display: block; }
+
+        /* --- LAYOUT --- */
+        main { flex: 1; padding: 20px; overflow-y: auto; display: none; padding-bottom: 100px; }
+        main.active { display: block; animation: fadeUp 0.3s; }
+        @keyframes fadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        h2 { border-left: 4px solid var(--green); padding-left: 10px; margin-top: 0; color: var(--white); }
+
+        .card {
+            background: var(--card-bg); border: 1px solid var(--border);
+            border-radius: 12px; padding: 15px; margin-bottom: 20px;
+        }
+        .card-title { font-weight: bold; color: var(--green); text-transform: uppercase; font-size: 0.9em; display: block; margin-bottom: 5px; }
+        .card-desc { font-size: 0.8em; color: var(--gray); font-style: italic; margin-bottom: 12px; }
+
+        .chip-container { display: flex; flex-wrap: wrap; gap: 8px; }
+        .chip {
+            background: #1a2633; border: 1px solid #334455; color: var(--white);
+            padding: 8px 14px; border-radius: 20px; font-size: 0.9em;
+            cursor: pointer; display: flex; gap: 6px; align-items: center;
+        }
+        .input-field {
+            width: 100%; padding: 12px; background: #000; border: 1px solid #334455;
+            color: white; border-radius: 6px; box-sizing: border-box; font-size: 1em;
+        }
+        .btn-primary {
+            width: 100%; padding: 14px; margin-top: 10px; background: var(--white);
+            color: #000; font-weight: bold; border: none; border-radius: 6px; text-transform: uppercase;
+        }
+
+        /* --- DASHBOARD COLORS & LAYOUT --- */
+        #analysis-modal {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: var(--bg-dark); z-index: 2000; overflow-y: auto; padding: 20px; box-sizing: border-box;
+        }
+        
+        .metric-box {
+            background: #0f161d; padding: 15px; border-radius: 8px;
+            margin-bottom: 15px; 
+            border-left-width: 6px; 
+            border-left-style: solid;
+            border-left-color: #555; 
+            transition: 0.3s;
+        }
+
+        /* STRICTER COLOR LOGIC */
+        .metric-box.good { border-left-color: var(--green) !important; }
+        .metric-box.warn { border-left-color: var(--yellow) !important; }
+        .metric-box.bad { border-left-color: var(--red) !important; }
+        
+        .metric-box.good .metric-val { color: var(--green); }
+        .metric-box.bad .metric-val { color: var(--red); }
+        .metric-box.warn .metric-val { color: var(--yellow); }
+
+        .metric-head { font-size: 0.8em; color: var(--gray); text-transform: uppercase; }
+        .metric-rule { font-size: 0.8em; color: #888; font-style: italic; margin-bottom: 5px; line-height: 1.4; }
+        .metric-val { font-size: 1.3em; font-weight: bold; color: white; margin-top:5px; display:block;}
+
+        .action-row { display: flex; gap: 10px; margin-top: 30px; }
+        .btn-yes { flex: 1; padding: 15px; background: var(--green); border: none; border-radius: 8px; font-weight: bold; font-size: 1.1em; }
+        .btn-no { flex: 1; padding: 15px; background: #333; border: none; border-radius: 8px; color: white; font-weight: bold; font-size: 1.1em; }
+
+        /* --- LISTS --- */
+        .list-item {
+            background: var(--card-bg); padding: 15px; border-radius: 8px;
+            margin-bottom: 10px; border: 1px solid var(--border);
+        }
+        .flex-row { display: flex; justify-content: space-between; align-items: center; }
+        
+        /* --- FOOTER --- */
+        footer {
+            position: fixed; bottom: 0; left: 0; width: 100%;
+            background: var(--glass); border-top: 1px solid var(--border);
+            padding: 12px 20px; display: flex; justify-content: space-between; align-items: center;
+            box-sizing: border-box; z-index: 100;
+        }
+        .footer-left { font-size:0.7em; color:var(--white); font-weight:bold; }
+        .footer-mid { font-size:0.7em; color:#666; position:absolute; left:50%; transform:translateX(-50%); }
+        .back-btn { background: transparent; border: 1px solid #555; color: var(--white); padding: 5px 15px; border-radius: 20px; }
+    </style>
+</head>
+<body>
+
+    <div id="splash">
+        <div class="splash-logo"><i class="fas fa-check-double"></i> CTV</div>
+        <div class="splash-tag">Crypto Trade Validator</div>
+        <div style="margin-top:20px; font-size:0.8em; color:#555;">v2.3</div>
+    </div>
+
+    <header>
+        <div class="logo">CTV</div>
+        <div class="menu-icon" onclick="toggleMenu()"><i class="fas fa-bars"></i></div>
+    </header>
+
+    <div class="menu-overlay" onclick="toggleMenu()"></div>
+    <div id="side-menu">
+        <a href="#" class="menu-link" onclick="goToPage('home')">Home</a>
+        <a href="#" class="menu-link" onclick="goToPage('activity')">Activity</a>
+        <a href="#" class="menu-link" onclick="goToPage('history')">History</a>
+        <a href="#" class="menu-link" onclick="goToPage('results')">Results</a>
+        <a href="#" class="menu-link" onclick="goToPage('about')">About</a>
+    </div>
+
+    <main id="home" class="active">
+        <h2>Market Scan</h2>
+        
+        <div class="card">
+            <span class="card-title"><i class="fas fa-anchor"></i> Anchor Coins</span>
+            <span class="card-desc">Safe. High Volume.</span>
+            <div class="chip-container">
+                <div class="chip" onclick="setInput('bitcoin')">BTC</div>
+                <div class="chip" onclick="setInput('ethereum')">ETH</div>
+                <div class="chip" onclick="setInput('solana')">SOL</div>
+                <div class="chip" onclick="setInput('binancecoin')">BNB</div>
+            </div>
+        </div>
+
+        <div class="card">
+            <span class="card-title"><i class="fas fa-running"></i> Runner Coins</span>
+            <span class="card-desc">Trending mid-caps.</span>
+            <div class="chip-container" id="runner-chips"></div>
+        </div>
+
+        <div class="card">
+            <span class="card-title"><i class="fas fa-dice"></i> Gambler Coins</span>
+            <span class="card-desc">High Risk / Meme Coins.</span>
+            <div class="chip-container" id="gambler-chips"></div>
+        </div>
+
+        <div class="card">
+            <label style="color:#aaa; font-size:0.9em; display:block; margin-bottom:5px;">Coin ID (e.g. 'pepe')</label>
+            <input type="text" id="coin-input" class="input-field" placeholder="...">
+            <button class="btn-primary" onclick="startAnalysis()">Analyse Coin</button>
+        </div>
+    </main>
+
+    <main id="activity">
+        <h2>Trade Setup</h2>
+        <div class="card">
+            <p style="color:#888;">Coin: <span id="act-coin" style="color:var(--white); font-weight:bold; font-size:1.2em;">...</span></p>
+            
+            <label style="display:block; margin-top:15px; color:#aaa; font-size:0.9em;">Invest Amount ($)</label>
+            <input type="number" id="act-amt" class="input-field">
+
+            <label style="display:block; margin-top:15px; color:#aaa; font-size:0.9em;">Entry Price ($)</label>
+            <input type="number" id="act-entry" class="input-field">
+
+            <div style="display:flex; gap:10px; margin-top:20px;">
+                <button class="btn-primary" style="background:var(--green);" onclick="saveActivity()">Save Trade</button>
+                <button class="btn-primary" style="background:#333; color:white;" onclick="clearActivity()">Clear</button>
+            </div>
+        </div>
+    </main>
+
+    <main id="history">
+        <div class="flex-row" style="margin-bottom:15px;">
+            <h2>Open Trades</h2>
+            <button onclick="clearHistory()" style="background:none; border:none; color:var(--red);">Clear All</button>
+        </div>
+        <div id="history-list"></div>
+    </main>
+
+    <main id="results">
+        <div class="flex-row" style="margin-bottom:15px;">
+            <h2>Closed Trades</h2>
+            <button onclick="clearResults()" style="background:none; border:none; color:var(--red);">Clear All</button>
+        </div>
+        <div id="results-list"></div>
+        <div class="card" style="margin-top:20px;">
+            <div class="flex-row"><span>Total PNL:</span><span id="tot-pnl">$0.00</span></div>
+            <div class="flex-row" style="margin-top:10px; border-top:1px solid #333; padding-top:10px;">
+                <span style="font-weight:bold;">Net Balance:</span><span id="tot-net" style="font-weight:bold;">$0.00</span>
+            </div>
+        </div>
+    </main>
+
+    <main id="about">
+        <h2>About CTV</h2>
+        <p>Crypto Trade Validator helps you stick to a plan.</p>
+        <p>Always check Supply and Volume before entering spot trades.</p>
+        <div style="text-align:center; margin-top:40px;">
+            <p style="color:#666; font-size:0.9em;">Powered by Webbuddy</p>
+        </div>
+    </main>
+
+    <div id="analysis-modal">
+        <h2 id="modal-title" style="margin-bottom:20px;">ANALYSIS</h2>
+        
+        <div class="metric-box" id="test-narrative">
+            <div class="metric-head">1. Narrative Check</div>
+            <div class="metric-rule">Is this coin part of a currently trending sector (AI, Meme, RWA)? Trade where the money is flowing.</div>
+            <div class="metric-val" id="res-narrative">...</div>
+        </div>
+
+        <div class="metric-box" id="test-supply">
+            <div class="metric-head">2. Supply Trap</div>
+            <div class="metric-rule">Checks if huge amounts of tokens are locked. If unlocked supply is low (<40%), investors may dump on you.</div>
+            <div class="metric-val" id="res-supply">...</div>
+        </div>
+
+        <div class="metric-box" id="test-volume">
+            <div class="metric-head">3. Ghost Town Check</div>
+            <div class="metric-rule">Ensures there is enough cash flowing to exit easily. Low volume means you might get stuck.</div>
+            <div class="metric-val" id="res-volume">...</div>
+        </div>
+
+        <div class="metric-box" id="test-dev">
+            <div class="metric-head">4. Dev Activity</div>
+            <div class="metric-rule">Verifies if the team is still building. A score below 15 suggests the project might be abandoned.</div>
+            <div class="metric-val" id="res-dev">...</div>
+        </div>
+
+        <div class="metric-box" id="test-price" style="border-left-color: var(--white);">
+            <div class="metric-head">5. Current Price</div>
+            <div class="metric-rule">Real-time USD Value</div>
+            <div class="metric-val" id="res-price">...</div>
+        </div>
+
+        <div class="metric-box" id="test-trend">
+            <div class="metric-head">6. 24h Trend</div>
+            <div class="metric-rule">Price movement in the last 24 hours.</div>
+            <div class="metric-val" id="res-trend">...</div>
+        </div>
+
+        <a id="manual-lnk" href="#" target="_blank" style="display:block; text-align:center; color:white; margin-top:20px;">Manual Search (External)</a>
+
+        <div class="action-row">
+            <button class="btn-no" onclick="closeModal()">NO (Reject)</button>
+            <button class="btn-yes" onclick="confirmYes()">YES (Trade)</button>
+        </div>
+    </div>
+
+    <footer>
+        <div class="footer-left">Powered by Webbuddy</div>
+        <div class="footer-mid">v2.3</div>
+        <button class="back-btn" onclick="goBack()">Back</button>
+    </footer>
+
+    <script>
+        // --- DATA ---
+        let navStack = ['home'];
+        const defRunners = ['near', 'render-token', 'fetch-ai'];
+        const defGamblers = ['pepe', 'bonk', 'dogwifhat'];
+
+        window.onload = function() {
+            // Push initial state for back button support
+            history.replaceState({page: 'home'}, null, "");
+
+            setTimeout(() => { document.getElementById('splash').style.opacity = 0; }, 2000);
+            setTimeout(() => { document.getElementById('splash').style.display = 'none'; }, 2500);
+            loadCoins(); loadHistory(); loadResults();
+        }
+
+        // --- PHONE BACK BUTTON LOGIC ---
+        window.onpopstate = function(event) {
+            if (event.state && event.state.page) {
+                // If modal is open, close it first
+                if(document.getElementById('analysis-modal').style.display === 'block') {
+                    closeModal(false); // false = don't touch history
+                    return;
+                }
+                // Show the page from history
+                showPage(event.state.page);
+            }
+        };
+
+        function showPage(id) {
+            document.querySelectorAll('main').forEach(el => el.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+        }
+
+        // --- NAV ---
+        function toggleMenu() {
+            document.getElementById('side-menu').classList.toggle('open');
+            document.querySelector('.menu-overlay').classList.toggle('active');
+        }
+        
+        function goToPage(id) {
+            // 1. Visually change page
+            showPage(id);
+            // 2. Add to browser history so Back button works
+            history.pushState({page: id}, null, "#" + id);
+            
+            // Close menu
+            document.getElementById('side-menu').classList.remove('open');
+            document.querySelector('.menu-overlay').classList.remove('active');
+        }
+
+        function goBack() {
+            // Custom In-App Back Button
+            if(document.getElementById('analysis-modal').style.display === 'block') {
+                closeModal();
+                return;
+            }
+            // Trigger browser back action
+            window.history.back();
+        }
+
+        // --- COINS ---
+        function loadCoins() {
+            let r = JSON.parse(localStorage.getItem('ctv_runners')) || defRunners;
+            let g = JSON.parse(localStorage.getItem('ctv_gamblers')) || defGamblers;
+            renderChips('runner-chips', r, 'ctv_runners');
+            renderChips('gambler-chips', g, 'ctv_gamblers');
+        }
+        function renderChips(elId, list, key) {
+            let c = document.getElementById(elId); c.innerHTML = '';
+            list.forEach(coin => {
+                let d = document.createElement('div');
+                d.className = 'chip';
+                d.innerHTML = `${coin.toUpperCase()} <i class="fas fa-times" onclick="delCoin('${coin}', '${key}', event)"></i>`;
+                d.onclick = (e) => { if(!e.target.classList.contains('fa-times')) setInput(coin); };
+                c.appendChild(d);
+            });
+            let add = document.createElement('div');
+            add.className = 'chip'; add.style.borderStyle = 'dashed';
+            add.innerHTML = '<i class="fas fa-plus"></i>';
+            add.onclick = () => {
+                let n = prompt("Coin ID:");
+                if(n && !list.includes(n)) { list.push(n.toLowerCase()); localStorage.setItem(key, JSON.stringify(list)); loadCoins(); }
+            };
+            c.appendChild(add);
+        }
+        function delCoin(coin, key, e) {
+            e.stopPropagation();
+            if(confirm("Delete?")) {
+                let list = JSON.parse(localStorage.getItem(key));
+                let newList = list.filter(x => x !== coin);
+                localStorage.setItem(key, JSON.stringify(newList));
+                loadCoins();
+            }
+        }
+        function setInput(c) { document.getElementById('coin-input').value = c; }
+
+        // --- ANALYSIS ---
+        function startAnalysis() {
+            let c = document.getElementById('coin-input').value.trim().toLowerCase();
+            if(!c) return alert("Enter coin name");
+            
+            // Push state so back button closes modal
+            history.pushState({page: 'modal'}, null, "#analysis");
+            
+            document.getElementById('analysis-modal').style.display = 'block';
+            document.getElementById('modal-title').innerText = c.toUpperCase();
+            document.getElementById('manual-lnk').href = `https://www.coingecko.com/en/coins/${c}`;
+            
+            ['res-narrative','res-supply','res-volume','res-dev','res-price','res-trend'].forEach(i => document.getElementById(i).innerText = 'Scanning...');
+            
+            fetchData(c);
+        }
+        
+        function closeModal(doBack = true) { 
+            document.getElementById('analysis-modal').style.display = 'none'; 
+            if(doBack) window.history.back(); // Remove modal state
+        }
+
+        async function fetchData(c) {
+            try {
+                let r = await fetch(`https://api.coingecko.com/api/v3/coins/${c}?localization=false&tickers=false&market_data=true&community_data=true&developer_data=true`);
+                if(!r.ok) throw new Error("Coin not found");
+                let d = await r.json();
+
+                // 1. Narrative
+                let cat = d.categories[0] || "General";
+                document.getElementById('res-narrative').innerText = cat;
+                document.getElementById('test-narrative').className = "metric-box good";
+
+                // 2. Supply Logic (RED/YELLOW/GREEN)
+                let mc = d.market_data.market_cap.usd;
+                let fdv = d.market_data.fully_diluted_valuation.usd || mc;
+                let ratio = mc / fdv;
+                let elSup = document.getElementById('test-supply');
+                let resSup = document.getElementById('res-supply');
+                
+                if(ratio < 0.4) {
+                    elSup.className = "metric-box bad";
+                    resSup.innerText = "DANGER: <40% Unlocked (High Dilution Risk)";
+                } else if (ratio < 0.75) {
+                    elSup.className = "metric-box warn";
+                    resSup.innerText = "WARNING: " + (ratio*100).toFixed(0) + "% Unlocked (Moderate Risk)";
+                } else {
+                    elSup.className = "metric-box good";
+                    resSup.innerText = "SAFE: Mostly Unlocked";
+                }
+
+                // 3. Volume Logic (RED/YELLOW/GREEN)
+                let vol = d.market_data.total_volume.usd;
+                let volRatio = vol / mc;
+                let elVol = document.getElementById('test-volume');
+                
+                if(volRatio < 0.02) {
+                    elVol.className = "metric-box bad";
+                    document.getElementById('res-volume').innerText = "DANGER: Ghost Town (<2% Vol)";
+                } else if (volRatio < 0.1) {
+                    elVol.className = "metric-box warn";
+                    document.getElementById('res-volume').innerText = "WARNING: Moderate Liquidity";
+                } else {
+                    elVol.className = "metric-box good";
+                    document.getElementById('res-volume').innerText = "SAFE: High Volume";
+                }
+
+                // 4. Dev Logic (RED/YELLOW/GREEN)
+                let dev = d.developer_score;
+                let elDev = document.getElementById('test-dev');
+                
+                if(dev < 15) {
+                    elDev.className = "metric-box bad";
+                    document.getElementById('res-dev').innerText = "DANGER: Dead Project";
+                } else if (dev < 40) {
+                    elDev.className = "metric-box warn";
+                    document.getElementById('res-dev').innerText = "WARNING: Weak Activity";
+                } else {
+                    elDev.className = "metric-box good";
+                    document.getElementById('res-dev').innerText = "SAFE: Active Development";
+                }
+
+                // 5. Price
+                document.getElementById('res-price').innerText = "$" + d.market_data.current_price.usd;
+
+                // 6. Trend
+                let trend = d.market_data.price_change_percentage_24h;
+                let elTrend = document.getElementById('test-trend');
+                document.getElementById('res-trend').innerText = trend.toFixed(2) + "%";
+                
+                if(trend >= 5) elTrend.className = "metric-box good";
+                else if(trend <= -5) elTrend.className = "metric-box bad";
+                else elTrend.className = "metric-box warn"; // Flat trend is yellow
+
+            } catch(e) { alert(e.message); closeModal(); }
+        }
+
+        function confirmYes() {
+            let c = document.getElementById('coin-input').value;
+            document.getElementById('act-coin').innerText = c.toUpperCase();
+            document.getElementById('analysis-modal').style.display = 'none'; // Close manually without history back to allow forward nav
+            goToPage('activity');
+        }
+
+        // --- HISTORY Logic ---
+        function saveActivity() {
+            let c = document.getElementById('act-coin').innerText;
+            let a = document.getElementById('act-amt').value;
+            let e = document.getElementById('act-entry').value;
+            if(c === "..." || !a || !e) return alert("Fill all fields");
+
+            let trade = { id: Date.now(), coin: c, amt: parseFloat(a), entry: parseFloat(e) };
+            let h = JSON.parse(localStorage.getItem('ctv_hist_v2')) || [];
+            h.unshift(trade);
+            localStorage.setItem('ctv_hist_v2', JSON.stringify(h));
+
+            alert("Trade Saved!");
+            document.getElementById('act-coin').innerText = "...";
+            document.getElementById('act-amt').value = "";
+            document.getElementById('act-entry').value = "";
+            
+            loadHistory();
+            goToPage('history');
+        }
+        
+        function clearActivity() {
+            document.getElementById('act-coin').innerText = "...";
+            document.getElementById('act-amt').value = "";
+            document.getElementById('act-entry').value = "";
+        }
+
+        function loadHistory() {
+            let list = document.getElementById('history-list');
+            list.innerHTML = '';
+            let h = JSON.parse(localStorage.getItem('ctv_hist_v2')) || [];
+            
+            if(h.length === 0) list.innerHTML = "<p style='text-align:center; color:#555'>No open trades</p>";
+
+            h.forEach((t, idx) => {
+                let div = document.createElement('div');
+                div.className = 'list-item';
+                div.innerHTML = `
+                    <div class="flex-row">
+                        <span style="font-weight:bold; font-size:1.1em; color:var(--green)">${t.coin}</span>
+                        <span>$${t.amt}</span>
+                    </div>
+                    <div style="font-size:0.9em; color:#aaa; margin-top:5px;">Entry: $${t.entry}</div>
+                    <div style="text-align:right; margin-top:10px;">
+                        <button class="btn-primary" style="width:auto; padding:6px 15px; font-size:0.8em;" onclick="closePos(${idx})">Close Position</button>
+                    </div>
+                `;
+                list.appendChild(div);
+            });
+        }
+
+        function closePos(idx) {
+            let ex = prompt("Exit Price ($):");
+            if(!ex) return;
+            
+            let h = JSON.parse(localStorage.getItem('ctv_hist_v2'));
+            let t = h[idx];
+            let pnl = ((ex - t.entry) / t.entry) * t.amt;
+            
+            let res = { coin: t.coin, pnl: pnl, date: new Date().toLocaleDateString() };
+            let rList = JSON.parse(localStorage.getItem('ctv_res_v2')) || [];
+            rList.unshift(res);
+            localStorage.setItem('ctv_res_v2', JSON.stringify(rList));
+
+            h.splice(idx, 1);
+            localStorage.setItem('ctv_hist_v2', JSON.stringify(h));
+            
+            loadHistory(); loadResults(); goToPage('results');
+        }
+        
+        function clearHistory() {
+            if(confirm("Clear all?")) { localStorage.setItem('ctv_hist_v2', "[]"); loadHistory(); }
+        }
+
+        // --- RESULTS ---
+        function loadResults() {
+            let list = document.getElementById('results-list');
+            list.innerHTML = '';
+            let r = JSON.parse(localStorage.getItem('ctv_res_v2')) || [];
+            let total = 0;
+
+            if(r.length === 0) list.innerHTML = "<p style='text-align:center; color:#555'>No history</p>";
+
+            r.forEach(item => {
+                total += item.pnl;
+                let color = item.pnl >= 0 ? 'var(--green)' : 'var(--red)';
+                let div = document.createElement('div');
+                div.className = 'list-item';
+                div.innerHTML = `
+                    <div class="flex-row">
+                        <span style="font-weight:bold;">${item.coin}</span>
+                        <span style="font-weight:bold; color:${color}">${item.pnl >= 0 ? '+' : ''}$${item.pnl.toFixed(2)}</span>
+                    </div>
+                    <div style="font-size:0.8em; color:#aaa; margin-top:4px;">${item.date}</div>
+                `;
+                list.appendChild(div);
+            });
+            
+            let tEl = document.getElementById('tot-pnl');
+            tEl.innerText = (total >= 0 ? '+' : '') + "$" + total.toFixed(2);
+            tEl.style.color = total >= 0 ? 'var(--green)' : 'var(--red)';
+            document.getElementById('tot-net').innerText = (total >= 0 ? '+' : '') + "$" + total.toFixed(2);
+        }
+
+        function clearResults() {
+             if(confirm("Clear results?")) { localStorage.setItem('ctv_res_v2', "[]"); loadResults(); }
+        }
+
+    </script>
+</body>
+</html>
